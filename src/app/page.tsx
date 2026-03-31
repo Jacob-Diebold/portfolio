@@ -50,13 +50,14 @@ export default function HomePage() {
         <Separator className="my-6 max-w-xs" />
         <div className="max-w-2xl space-y-4 text-muted-foreground leading-relaxed">
           <p>
-            Use this section for a short bio: your focus areas, tools you like, and what you are
-            looking for next. Keep it human and specific — you can refine the copy whenever you
-            like.
+            I&apos;m a full-stack developer in {site.location}. I build products end to end — mostly
+            TypeScript, React, React Native, and Node — and I currently the only developer shipping
+            software at Premier Roofing. Before engineering I led teams in the field, which still
+            shapes how I design tools people will actually use.
           </p>
           <p>
-            The layout is set up so you can drop in a richer hero above without touching the rest of
-            the page.
+            Below are some of my personal products that illustrate how I like to design and ship. If
+            you have a full-time role available, I&apos;d love to hear from you.
           </p>
         </div>
       </section>
@@ -68,27 +69,27 @@ export default function HomePage() {
       >
         <div className="mx-auto max-w-5xl scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24">
           <h2 id="projects-heading" className="font-heading text-2xl font-semibold tracking-tight">
-            Selected work
+            Personal Products
           </h2>
-          <p className="mt-2 max-w-2xl text-muted-foreground">
-            Placeholder projects — replace titles, tags, and links with real work.
-          </p>
-          <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-10 grid gap-6 sm:grid-cols-2 sm:items-stretch lg:grid-cols-3">
             {featuredProjects.map((project) => (
-              <li key={project.title}>
-                <Card className="h-full transition-shadow hover:shadow-md">
-                  <CardHeader>
+              <li key={project.title} className="flex h-full min-h-0">
+                <Card className="flex h-full w-full flex-col transition-shadow hover:shadow-md">
+                  <CardHeader className="shrink-0">
                     <CardTitle>{project.title}</CardTitle>
                     <CardDescription>{project.description}</CardDescription>
                   </CardHeader>
-                  <CardContent className="flex flex-wrap gap-2">
-                    {project.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
+                  <div className="min-h-0 flex-1" aria-hidden />
+                  <CardContent className="shrink-0 pt-0">
+                    <div className="flex flex-wrap gap-2">
+                      {project.tags.map((tag) => (
+                        <Badge key={tag} variant="secondary">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
                   </CardContent>
-                  <CardFooter className="justify-end border-t">
+                  <CardFooter className="shrink-0 justify-end border-t">
                     <LinkButton
                       href={project.href}
                       variant="ghost"
@@ -118,18 +119,26 @@ export default function HomePage() {
           Contact
         </h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">
-          Swap this CTA for a form, calendar link, or your preferred channel.
+          Reach out about full-time opportunities or to connect.
         </p>
         <Card className="mt-8 max-w-xl">
           <CardHeader>
             <CardTitle>Say hello</CardTitle>
             <CardDescription>
-              Direct line for collaborations, freelance, or full-time conversations.
+              LinkedIn is the best place to reach me first; email is fine too.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <LinkButton href={site.links.email} size="default">
-              Send an email
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <LinkButton
+              href={site.links.linkedin}
+              size="default"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              LinkedIn
+            </LinkButton>
+            <LinkButton href={site.links.email} variant="outline" size="default">
+              Email
             </LinkButton>
           </CardContent>
         </Card>

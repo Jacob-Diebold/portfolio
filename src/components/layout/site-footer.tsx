@@ -15,21 +15,21 @@ export function SiteFooter() {
           </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
             <Link
-              href={site.links.github}
-              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              GitHub
-            </Link>
-            <Separator orientation="vertical" className="hidden h-4 sm:block" />
-            <Link
               href={site.links.linkedin}
               className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
               rel="noopener noreferrer"
               target="_blank"
             >
               LinkedIn
+            </Link>
+            <Separator orientation="vertical" className="hidden h-4 sm:block" />
+            <Link
+              href={site.links.github}
+              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              GitHub
             </Link>
             <Separator orientation="vertical" className="hidden h-4 sm:block" />
             <Link
