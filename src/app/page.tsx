@@ -23,7 +23,7 @@ export default function HomePage() {
   const [rows, setRows] = useState(8);
   const [cols, setCols] = useState(60);
   const [board, setBoard] = useState<number[][]>([]);
-  const [mode, setMode] = useState<Mode>("random");
+  const [mode, setMode] = useState<Mode>("static");
   const [wipeValue, setWipeValue] = useState<0 | 1>(1);
 
   const setCell = useCallback((row: number, col: number, value: 0 | 1) => {
@@ -108,6 +108,9 @@ export default function HomePage() {
 
   const isDark = theme?.includes("dark");
 
+  const onColor = isDark ? "white" : "#18181b";
+  const offColor = isDark ? "#3f3f46" : "#f8fafc";
+
   return (
     <>
       {/* Replace this block with your hero concept — kept minimal on purpose. */}
@@ -130,9 +133,9 @@ export default function HomePage() {
           onSetCell={setCell}
           // TODO: Update these colors to allow the user to change the colors of the flipdot board
           colors={{
-            on: isDark ? "white" : "black",
-            off: isDark ? "gray" : "white",
-            rim: isDark ? "white" : "black",
+            on: onColor,
+            off: offColor,
+            rim: onColor,
           }}
         />
       </section>

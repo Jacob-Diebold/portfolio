@@ -46,35 +46,81 @@ export default function FlipDotBoard({ rows, cols, board, colors, onSetCell }: F
   const offColor = colors?.off ?? "#e8e8e8";
   const onColor = colors?.on ?? "#1a1a1a";
 
-  /** Thin disk: shorter height = less visible rim whenever the cap isn’t perfectly head‑on. */
-  const geometry = useMemo(() => new THREE.CylinderGeometry(0.45, 0.45, 0.05, 32), []);
+  /** Thin disk with a real flip-dot style notch: circular outline plus a smooth concave bite. */
+  const geometry = useMemo(() => {
+    const radius = 0.45;
+    const thickness = 0.05;
+    const notchShoulderX = 0.14;
+    const notchDepth = 0.2;
+    const shoulderY = -Math.sqrt(radius * radius - notchShoulderX * notchShoulderX);
+    const notchApexY = -radius + notchDepth;
 
-  // Cylinder groups: [0] side, [1] top (+Y), [2] bottom (−Y). Rx(π/2) lays the disk flat, then π about AXIS_FLIP swaps caps.
+    // Walk the circle from the lower-left shoulder all the way around the top to the lower-right
+    // shoulder, then curve back through the notch. Using one outer arc plus one bezier is much
+    // more robust than mixing multiple arcs with tricky winding.
+    const outerLeftAngle = Math.atan2(shoulderY, -notchShoulderX) + Math.PI * 2;
+    const outerRightAngle = Math.atan2(shoulderY, notchShoulderX);
+
+    const shape = new THREE.Shape();
+    shape.moveTo(-notchShoulderX, shoulderY);
+    shape.absarc(0, 0, radius, outerLeftAngle, outerRightAngle, true);
+    shape.bezierCurveTo(
+      notchShoulderX * 0.85,
+      notchApexY,
+      -notchShoulderX * 0.85,
+      notchApexY,
+      -notchShoulderX,
+      shoulderY,
+    );
+
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+      depth: thickness,
+      bevelEnabled: false,
+      curveSegments: 48,
+    });
+
+    // ExtrudeGeometry groups all lid faces together by default. Split them so the two settled
+    // sides can use different materials, with the rim as a third material.
+    const [lidGroup, sideGroup] = geometry.groups;
+    if (lidGroup && sideGroup) {
+      const halfLidCount = lidGroup.count / 2;
+      geometry.clearGroups();
+      geometry.addGroup(lidGroup.start, halfLidCount, 0);
+      geometry.addGroup(lidGroup.start + halfLidCount, halfLidCount, 1);
+      geometry.addGroup(sideGroup.start, sideGroup.count, 2);
+    }
+
+    geometry.center();
+    geometry.rotateX(Math.PI / 2);
+
+    return geometry;
+  }, []);
+
+  // Custom ExtrudeGeometry groups: [0] face toward camera at rest, [1] back face, [2] rim.
   const materials = useMemo(
     () => [
       new THREE.MeshStandardMaterial({
-        color: rimColor,
-        metalness: 0.5,
-        roughness: 0.2,
-        emissive: rimColor,
-        emissiveIntensity: 0.25,
-      }),
-      new THREE.MeshStandardMaterial({
         color: offColor,
-        metalness: 0.5,
-        roughness: 0.2,
+        metalness: 0.15,
+        roughness: 0.6,
         emissive: offColor,
-        emissiveIntensity: 0.25,
+        emissiveIntensity: 0.5,
       }),
+
       new THREE.MeshStandardMaterial({
         color: onColor,
-        metalness: 0.5,
-        roughness: 0.2,
+        metalness: 0.15,
+        roughness: 0.6,
         emissive: onColor,
-        emissiveIntensity: 0.25,
+        emissiveIntensity: 0.5,
+      }),
+      new THREE.MeshStandardMaterial({
+        color: rimColor,
+        metalness: 0.15,
+        roughness: 0.6,
       }),
     ],
-    [rimColor, offColor, onColor],
+    [offColor, onColor, rimColor],
   );
 
   useLayoutEffect(() => () => geometry.dispose(), [geometry]);
