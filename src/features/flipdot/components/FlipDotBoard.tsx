@@ -5,8 +5,9 @@ import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useRef, useMemo, useLayoutEffect, useEffect } from "react";
 import * as THREE from "three";
 import { FlipDotBoardProps } from "../types/flipdot";
+import { createFlipDotDiskGeometry } from "../geometry/createFlipDotGeometry";
 
-/** Base: cylinder (Y up) → disk in board plane. Flip: 180° around axis in the XY plane at 45° (real modules look “diagonal”). */
+/** Base: cylinder (Y up) → disk in board plane. Flip: 180° around axis in the XY plane at 45°. */
 const AXIS_BASE = new THREE.Vector3(1, 0, 0);
 const AXIS_FLIP = new THREE.Vector3(1, 1, 0).normalize();
 const Q_BASE = new THREE.Quaternion();
@@ -16,7 +17,7 @@ const Q_FLIP = new THREE.Quaternion();
  * Exponential ease toward the target angle. τ ≈ time scale (s); ~3τ ≈ mostly settled.
  * Real flip dots complete a move in roughly 50–120 ms — keep τ small (here ~45 ms).
  */
-const FLIP_TAU = 0.1;
+const FLIP_TAU = 0.035;
 const FLIP_SNAP_RAD = 0.006;
 
 /** Cap blend if Δt spikes (tab away); must use real frame Δt from useFrame — not clock.getDelta() (see below). */
@@ -46,55 +47,7 @@ export default function FlipDotBoard({ rows, cols, board, colors, onSetCell }: F
   const offColor = colors?.off ?? "#e8e8e8";
   const onColor = colors?.on ?? "#1a1a1a";
 
-  /** Thin disk with a real flip-dot style notch: circular outline plus a smooth concave bite. */
-  const geometry = useMemo(() => {
-    const radius = 0.45;
-    const thickness = 0.05;
-    const notchShoulderX = 0.14;
-    const notchDepth = 0.2;
-    const shoulderY = -Math.sqrt(radius * radius - notchShoulderX * notchShoulderX);
-    const notchApexY = -radius + notchDepth;
-
-    // Walk the circle from the lower-left shoulder all the way around the top to the lower-right
-    // shoulder, then curve back through the notch. Using one outer arc plus one bezier is much
-    // more robust than mixing multiple arcs with tricky winding.
-    const outerLeftAngle = Math.atan2(shoulderY, -notchShoulderX) + Math.PI * 2;
-    const outerRightAngle = Math.atan2(shoulderY, notchShoulderX);
-
-    const shape = new THREE.Shape();
-    shape.moveTo(-notchShoulderX, shoulderY);
-    shape.absarc(0, 0, radius, outerLeftAngle, outerRightAngle, true);
-    shape.bezierCurveTo(
-      notchShoulderX * 0.85,
-      notchApexY,
-      -notchShoulderX * 0.85,
-      notchApexY,
-      -notchShoulderX,
-      shoulderY,
-    );
-
-    const geometry = new THREE.ExtrudeGeometry(shape, {
-      depth: thickness,
-      bevelEnabled: false,
-      curveSegments: 48,
-    });
-
-    // ExtrudeGeometry groups all lid faces together by default. Split them so the two settled
-    // sides can use different materials, with the rim as a third material.
-    const [lidGroup, sideGroup] = geometry.groups;
-    if (lidGroup && sideGroup) {
-      const halfLidCount = lidGroup.count / 2;
-      geometry.clearGroups();
-      geometry.addGroup(lidGroup.start, halfLidCount, 0);
-      geometry.addGroup(lidGroup.start + halfLidCount, halfLidCount, 1);
-      geometry.addGroup(sideGroup.start, sideGroup.count, 2);
-    }
-
-    geometry.center();
-    geometry.rotateX(Math.PI / 2);
-
-    return geometry;
-  }, []);
+  const geometry = useMemo(() => createFlipDotDiskGeometry(), []);
 
   // Custom ExtrudeGeometry groups: [0] face toward camera at rest, [1] back face, [2] rim.
   const materials = useMemo(

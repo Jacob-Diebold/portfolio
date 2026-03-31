@@ -15,4 +15,18 @@ export type FlipDotBoardProps = {
   onSetCell?: (row: number, col: number, value: 0 | 1) => void;
 };
 
-export type FlipDotMode = "random" | "image" | "scroll" | "snake" | "text";
+/** Display modes: static text applies immediately; scroll / random / wipe use tick hooks. */
+export type DisplayModeId = "textStatic" | "textScroll" | "random" | "wipeRows" | "wipeColumns";
+
+export type FlipDotHeroProps = {
+  rows?: number;
+  cols?: number;
+  /** Dot colors; typically from theme in page. */
+  colors?: FlipDotBoardProps["colors"];
+  /** Initial mode */
+  defaultMode?: DisplayModeId;
+  /** Initial marquee / static string */
+  defaultText?: string;
+  /** Tick interval for random / scroll / wipe */
+  tickIntervalMs?: number;
+};

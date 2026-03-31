@@ -1,1 +1,1 @@
-// TODO: Add a scroll mode that displays a scrollable text on a flipdot board
+export { buildMessageRaster, sliceScrollWindow } from "../text/layout";

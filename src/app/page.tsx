@@ -13,97 +13,10 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { featuredProjects, site } from "@/lib/site";
-import { FlipDotContainer } from "@/features/flipdot";
-import { useCallback, useEffect, useState } from "react";
+import { FlipDotHero } from "@/features/flipdot";
 import { useTheme } from "next-themes";
 
-type Mode = "random" | "static" | "on" | "off" | "wipe";
-
 export default function HomePage() {
-  const [rows, setRows] = useState(8);
-  const [cols, setCols] = useState(60);
-  const [board, setBoard] = useState<number[][]>([]);
-  const [mode, setMode] = useState<Mode>("static");
-  const [wipeValue, setWipeValue] = useState<0 | 1>(1);
-
-  const setCell = useCallback((row: number, col: number, value: 0 | 1) => {
-    setBoard((prev) => {
-      if (row < 0 || row >= prev.length || col < 0 || col >= (prev[row]?.length ?? 0)) return prev;
-      if ((prev[row][col] !== 0 ? 1 : 0) === value) return prev;
-      const next = prev.map((r) => r.slice());
-      next[row][col] = value;
-      return next;
-    });
-  }, []);
-
-  useEffect(() => {
-    if (mode !== "random") return;
-    const interval = setInterval(() => {
-      setCell(
-        Math.floor(Math.random() * rows),
-        Math.floor(Math.random() * cols),
-        Math.random() > 0.5 ? 1 : 0,
-      );
-    }, 1);
-    return () => clearInterval(interval);
-  }, [mode, rows, cols, setCell]);
-
-  useEffect(() => {
-    if (mode !== "on" && mode !== "off") return;
-    const tempBoard: number[][] = [];
-    const value = mode === "on" ? 1 : 0;
-    for (let i = 0; i < rows; i++) {
-      tempBoard.push(Array.from({ length: cols }, () => value));
-    }
-    setBoard(tempBoard);
-  }, [mode, rows, cols]);
-
-  useEffect(() => {
-    if (mode !== "wipe") return;
-    const msPerCell = 10;
-    const timeouts: number[] = [];
-    let cancelled = false;
-    let passValue: 0 | 1 = wipeValue;
-
-    const schedulePass = () => {
-      for (let j = 0; j < cols; j++) {
-        for (let i = 0; i < rows; i++) {
-          const delay = msPerCell * (i * cols + j);
-          timeouts.push(
-            window.setTimeout(() => {
-              if (!cancelled) setCell(i, j, passValue);
-            }, delay),
-          );
-        }
-      }
-      const lastCellDelay = msPerCell * (rows * cols - 1);
-      timeouts.push(
-        window.setTimeout(() => {
-          if (cancelled) return;
-          passValue = passValue === 0 ? 1 : 0;
-          setWipeValue(passValue);
-          schedulePass();
-        }, lastCellDelay + msPerCell),
-      );
-    };
-
-    schedulePass();
-
-    return () => {
-      cancelled = true;
-      timeouts.forEach(clearTimeout);
-    };
-    // `wipeValue` is only the seed when `mode` flips to "wipe`; omitting it from deps avoids restarting (and clearing timeouts) on each toggle inside the loop.
-  }, [mode, rows, cols, setCell]);
-
-  useEffect(() => {
-    const tempBoard: number[][] = [];
-    for (let i = 0; i < rows; i++) {
-      tempBoard.push(Array.from({ length: cols }, () => (Math.random() > 0.5 ? 1 : 0) as number));
-    }
-    setBoard(tempBoard);
-  }, [rows, cols]);
-
   const { theme } = useTheme();
 
   const isDark = theme?.includes("dark");
@@ -113,30 +26,16 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Replace this block with your hero concept — kept minimal on purpose. */}
-      <section
-        className="border-b border-border/80 bg-muted/30 h-screen"
-        aria-labelledby="hero-heading"
-      >
-        <div className="flex gap-5 items-center justify-center">
-          {/* TODO: Add better buttons and move them to the features folder */}
-          <button onClick={() => setMode("random")}>Random</button>
-          <button onClick={() => setMode("static")}>Static</button>
-          <button onClick={() => setMode("on")}>On</button>
-          <button onClick={() => setMode("off")}>Off</button>
-          <button onClick={() => setMode("wipe")}>Wipe</button>
-        </div>
-        <FlipDotContainer
-          rows={rows}
-          cols={cols}
-          board={board}
-          onSetCell={setCell}
-          // TODO: Update these colors to allow the user to change the colors of the flipdot board
+      <section className="border-b border-border/80 bg-muted/30" aria-labelledby="hero-heading">
+        <FlipDotHero
+          rows={9}
+          cols={40}
           colors={{
             on: onColor,
             off: offColor,
             rim: onColor,
           }}
+          tickIntervalMs={175}
         />
       </section>
 
