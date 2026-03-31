@@ -1,65 +1,237 @@
-import Image from "next/image";
+"use client";
+import { ArrowUpRight } from "lucide-react";
 
-export default function Home() {
+import { LinkButton } from "@/components/link-button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { featuredProjects, site } from "@/lib/site";
+import { FlipDotContainer } from "@/features/flipdot";
+import { useCallback, useEffect, useState } from "react";
+import { useTheme } from "next-themes";
+
+type Mode = "random" | "static" | "on" | "off" | "wipe";
+
+export default function HomePage() {
+  const [rows, setRows] = useState(8);
+  const [cols, setCols] = useState(60);
+  const [board, setBoard] = useState<number[][]>([]);
+  const [mode, setMode] = useState<Mode>("random");
+  const [wipeValue, setWipeValue] = useState<0 | 1>(1);
+
+  const setCell = useCallback((row: number, col: number, value: 0 | 1) => {
+    setBoard((prev) => {
+      if (row < 0 || row >= prev.length || col < 0 || col >= (prev[row]?.length ?? 0)) return prev;
+      if ((prev[row][col] !== 0 ? 1 : 0) === value) return prev;
+      const next = prev.map((r) => r.slice());
+      next[row][col] = value;
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (mode !== "random") return;
+    const interval = setInterval(() => {
+      setCell(
+        Math.floor(Math.random() * rows),
+        Math.floor(Math.random() * cols),
+        Math.random() > 0.5 ? 1 : 0,
+      );
+    }, 1);
+    return () => clearInterval(interval);
+  }, [mode, rows, cols, setCell]);
+
+  useEffect(() => {
+    if (mode !== "on" && mode !== "off") return;
+    const tempBoard: number[][] = [];
+    const value = mode === "on" ? 1 : 0;
+    for (let i = 0; i < rows; i++) {
+      tempBoard.push(Array.from({ length: cols }, () => value));
+    }
+    setBoard(tempBoard);
+  }, [mode, rows, cols]);
+
+  useEffect(() => {
+    if (mode !== "wipe") return;
+    const msPerCell = 10;
+    const timeouts: number[] = [];
+    let cancelled = false;
+    let passValue: 0 | 1 = wipeValue;
+
+    const schedulePass = () => {
+      for (let j = 0; j < cols; j++) {
+        for (let i = 0; i < rows; i++) {
+          const delay = msPerCell * (i * cols + j);
+          timeouts.push(
+            window.setTimeout(() => {
+              if (!cancelled) setCell(i, j, passValue);
+            }, delay),
+          );
+        }
+      }
+      const lastCellDelay = msPerCell * (rows * cols - 1);
+      timeouts.push(
+        window.setTimeout(() => {
+          if (cancelled) return;
+          passValue = passValue === 0 ? 1 : 0;
+          setWipeValue(passValue);
+          schedulePass();
+        }, lastCellDelay + msPerCell),
+      );
+    };
+
+    schedulePass();
+
+    return () => {
+      cancelled = true;
+      timeouts.forEach(clearTimeout);
+    };
+    // `wipeValue` is only the seed when `mode` flips to "wipe`; omitting it from deps avoids restarting (and clearing timeouts) on each toggle inside the loop.
+  }, [mode, rows, cols, setCell]);
+
+  useEffect(() => {
+    const tempBoard: number[][] = [];
+    for (let i = 0; i < rows; i++) {
+      tempBoard.push(Array.from({ length: cols }, () => (Math.random() > 0.5 ? 1 : 0) as number));
+    }
+    setBoard(tempBoard);
+  }, [rows, cols]);
+
+  const { theme } = useTheme();
+
+  const isDark = theme?.includes("dark");
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <>
+      {/* Replace this block with your hero concept — kept minimal on purpose. */}
+      <section
+        className="border-b border-border/80 bg-muted/30 h-screen"
+        aria-labelledby="hero-heading"
+      >
+        <div className="flex gap-5 items-center justify-center">
+          {/* TODO: Add better buttons and move them to the features folder */}
+          <button onClick={() => setMode("random")}>Random</button>
+          <button onClick={() => setMode("static")}>Static</button>
+          <button onClick={() => setMode("on")}>On</button>
+          <button onClick={() => setMode("off")}>Off</button>
+          <button onClick={() => setMode("wipe")}>Wipe</button>
+        </div>
+        <FlipDotContainer
+          rows={rows}
+          cols={cols}
+          board={board}
+          onSetCell={setCell}
+          // TODO: Update these colors to allow the user to change the colors of the flipdot board
+          colors={{
+            on: isDark ? "white" : "black",
+            off: isDark ? "gray" : "white",
+            rim: isDark ? "white" : "black",
+          }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+      </section>
+
+      <section
+        id="about"
+        className="mx-auto max-w-5xl scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24"
+        aria-labelledby="about-heading"
+      >
+        <h2 id="about-heading" className="font-heading text-2xl font-semibold tracking-tight">
+          About
+        </h2>
+        <Separator className="my-6 max-w-xs" />
+        <div className="max-w-2xl space-y-4 text-muted-foreground leading-relaxed">
+          <p>
+            Use this section for a short bio: your focus areas, tools you like, and what you are
+            looking for next. Keep it human and specific — you can refine the copy whenever you
+            like.
+          </p>
+          <p>
+            The layout is set up so you can drop in a richer hero above without touching the rest of
+            the page.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      <section
+        id="projects"
+        className="border-y border-border/80 bg-muted/20"
+        aria-labelledby="projects-heading"
+      >
+        <div className="mx-auto max-w-5xl scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24">
+          <h2 id="projects-heading" className="font-heading text-2xl font-semibold tracking-tight">
+            Selected work
+          </h2>
+          <p className="mt-2 max-w-2xl text-muted-foreground">
+            Placeholder projects — replace titles, tags, and links with real work.
+          </p>
+          <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {featuredProjects.map((project) => (
+              <li key={project.title}>
+                <Card className="h-full transition-shadow hover:shadow-md">
+                  <CardHeader>
+                    <CardTitle>{project.title}</CardTitle>
+                    <CardDescription>{project.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap gap-2">
+                    {project.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </CardContent>
+                  <CardFooter className="justify-end border-t">
+                    <LinkButton
+                      href={project.href}
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1 pr-0"
+                      {...(project.href.startsWith("http")
+                        ? { target: "_blank", rel: "noopener noreferrer" }
+                        : {})}
+                    >
+                      View
+                      <ArrowUpRight className="size-4" />
+                    </LinkButton>
+                  </CardFooter>
+                </Card>
+              </li>
+            ))}
+          </ul>
         </div>
-      </main>
-    </div>
+      </section>
+
+      <section
+        id="contact"
+        className="mx-auto max-w-5xl scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24"
+        aria-labelledby="contact-heading"
+      >
+        <h2 id="contact-heading" className="font-heading text-2xl font-semibold tracking-tight">
+          Contact
+        </h2>
+        <p className="mt-2 max-w-2xl text-muted-foreground">
+          Swap this CTA for a form, calendar link, or your preferred channel.
+        </p>
+        <Card className="mt-8 max-w-xl">
+          <CardHeader>
+            <CardTitle>Say hello</CardTitle>
+            <CardDescription>
+              Direct line for collaborations, freelance, or full-time conversations.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LinkButton href={site.links.email} size="default">
+              Send an email
+            </LinkButton>
+          </CardContent>
+        </Card>
+      </section>
+    </>
   );
 }
