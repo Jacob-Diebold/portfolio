@@ -70,8 +70,16 @@ export function buildMessageRaster(
   return { raster, width };
 }
 
-/** One frame of horizontal scroll: window [scroll..scroll+cols) modulo raster width. */
-export function sliceScrollWindow(raster: number[][], scroll: number, outCols: number): number[][] {
+/**
+ * One frame of horizontal scroll: window [scroll..scroll+cols).
+ * Set `wrap=true` for cyclic marquee behavior.
+ */
+export function sliceScrollWindow(
+  raster: number[][],
+  scroll: number,
+  outCols: number,
+  wrap = true,
+): number[][] {
   const rows = raster.length;
   const w = raster[0]?.length ?? 0;
   if (w === 0) return createEmptyBoard(rows, outCols);
@@ -79,7 +87,12 @@ export function sliceScrollWindow(raster: number[][], scroll: number, outCols: n
   const board = createEmptyBoard(rows, outCols);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < outCols; c++) {
-      board[r][c] = raster[r][(scroll + c) % w] !== 0 ? 1 : 0;
+      const src = scroll + c;
+      if (wrap) {
+        board[r][c] = raster[r][((src % w) + w) % w] !== 0 ? 1 : 0;
+      } else {
+        board[r][c] = src >= 0 && src < w && raster[r][src] !== 0 ? 1 : 0;
+      }
     }
   }
   return board;

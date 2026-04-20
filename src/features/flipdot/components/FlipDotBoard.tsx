@@ -2,7 +2,7 @@
 "use client";
 
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useRef, useMemo, useLayoutEffect, useEffect } from "react";
+import { useRef, useMemo, useLayoutEffect, useEffect, useCallback } from "react";
 import * as THREE from "three";
 import { FlipDotBoardProps } from "../types/flipdot";
 import { createFlipDotDiskGeometry } from "../geometry/createFlipDotGeometry";
@@ -23,14 +23,23 @@ const FLIP_SNAP_RAD = 0.006;
 /** Cap blend if Δt spikes (tab away); must use real frame Δt from useFrame — not clock.getDelta() (see below). */
 const FLIP_K_MAX = 0.92;
 
-export default function FlipDotBoard({ rows, cols, board, colors, onSetCell }: FlipDotBoardProps) {
+export default function FlipDotBoard({
+  rows,
+  cols,
+  board,
+  colors,
+  onSetCell,
+  hoverToPaint = true,
+}: FlipDotBoardProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   /** Flip angle around AXIS_FLIP per instance (0 = off, π = on). */
   const flipAnglesRef = useRef<Float32Array | null>(null);
   const draggingRef = useRef(false);
   const lastInstanceIdRef = useRef<number | null>(null);
+  const lastHoverInstanceIdRef = useRef<number | null>(null);
   const strokeValueRef = useRef<0 | 1 | null>(null);
   const onSetCellRef = useRef(onSetCell);
+  const hoverToPaintRef = useRef(hoverToPaint);
   const rowsRef = useRef(rows);
   const colsRef = useRef(cols);
   const boardRef = useRef(board);
@@ -38,10 +47,13 @@ export default function FlipDotBoard({ rows, cols, board, colors, onSetCell }: F
   const { gl } = useThree();
   const count = rows * cols;
 
-  onSetCellRef.current = onSetCell;
-  rowsRef.current = rows;
-  colsRef.current = cols;
-  boardRef.current = board;
+  useLayoutEffect(() => {
+    onSetCellRef.current = onSetCell;
+    hoverToPaintRef.current = hoverToPaint;
+    rowsRef.current = rows;
+    colsRef.current = cols;
+    boardRef.current = board;
+  }, [onSetCell, hoverToPaint, rows, cols, board]);
 
   const rimColor = colors?.rim ?? "#3a3a3a";
   const offColor = colors?.off ?? "#e8e8e8";
@@ -125,6 +137,22 @@ export default function FlipDotBoard({ rows, cols, board, colors, onSetCell }: F
     }
 
     const setCell = onSetCellRef.current;
+    if (setCell && hoverToPaintRef.current && mesh) {
+      state.raycaster.setFromCamera(state.pointer, state.camera);
+      const hoverHit = state.raycaster.intersectObject(mesh, false)[0];
+      const hoverId = hoverHit?.instanceId;
+      if (hoverId !== undefined && hoverId >= 0) {
+        if (hoverId !== lastHoverInstanceIdRef.current) {
+          lastHoverInstanceIdRef.current = hoverId;
+          const c = colsRef.current;
+          const rCount = rowsRef.current;
+          const col = hoverId % c;
+          const row = Math.floor(hoverId / c);
+          if (row >= 0 && row < rCount && col >= 0 && col < c) setCell(row, col, 1);
+        }
+      }
+    }
+
     const stroke = strokeValueRef.current;
     if (!setCell || stroke === null || !draggingRef.current || !mesh) return;
 
@@ -144,27 +172,29 @@ export default function FlipDotBoard({ rows, cols, board, colors, onSetCell }: F
 
   const interactive = Boolean(onSetCell);
 
-  const finishStrokeRef = useRef<(pointerId: number) => void>(() => {});
-  finishStrokeRef.current = (pointerId: number) => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    lastInstanceIdRef.current = null;
-    strokeValueRef.current = null;
-    const el = gl.domElement;
-    if (el.hasPointerCapture(pointerId)) {
-      el.releasePointerCapture(pointerId);
-    }
-  };
+  const finishStroke = useCallback(
+    (pointerId: number) => {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      lastInstanceIdRef.current = null;
+      strokeValueRef.current = null;
+      const el = gl.domElement;
+      if (el.hasPointerCapture(pointerId)) {
+        el.releasePointerCapture(pointerId);
+      }
+    },
+    [gl],
+  );
 
   useEffect(() => {
-    const onWindowUp = (e: PointerEvent) => finishStrokeRef.current(e.pointerId);
+    const onWindowUp = (e: PointerEvent) => finishStroke(e.pointerId);
     window.addEventListener("pointerup", onWindowUp);
     window.addEventListener("pointercancel", onWindowUp);
     return () => {
       window.removeEventListener("pointerup", onWindowUp);
       window.removeEventListener("pointercancel", onWindowUp);
     };
-  }, []);
+  }, [finishStroke]);
 
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
     if (!interactive || !onSetCell) return;
@@ -188,11 +218,11 @@ export default function FlipDotBoard({ rows, cols, board, colors, onSetCell }: F
   const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
     if (!interactive) return;
     e.stopPropagation();
-    finishStrokeRef.current(e.pointerId);
+    finishStroke(e.pointerId);
   };
 
   const handlePointerCancel = (e: ThreeEvent<PointerEvent>) => {
-    finishStrokeRef.current(e.pointerId);
+    finishStroke(e.pointerId);
   };
 
   return (
@@ -207,14 +237,13 @@ export default function FlipDotBoard({ rows, cols, board, colors, onSetCell }: F
         interactive
           ? (e) => {
               e.stopPropagation();
-              gl.domElement.style.cursor = "pointer";
             }
           : undefined
       }
       onPointerOut={
         interactive
           ? () => {
-              gl.domElement.style.cursor = draggingRef.current ? "pointer" : "auto";
+              lastHoverInstanceIdRef.current = null;
               if (draggingRef.current) lastInstanceIdRef.current = null;
             }
           : undefined
